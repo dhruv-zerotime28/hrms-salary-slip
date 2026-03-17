@@ -6,11 +6,7 @@ import {
   type ChangeEvent,
 } from "react";
 import * as XLSX from "xlsx";
-import { pdf } from "@react-pdf/renderer";
-import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { SalarySlipDocument, type EmployeeData } from "./SalarySlipPdf";
-import { numberToWords } from "./numberToWords";
 import "./App.css";
 
 const REQUIRED_COLUMNS = [
@@ -245,103 +241,37 @@ function App() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!workbook || !selectedSheet || !month || !year) return;
+    if (!file || !selectedSheet || !month || !year) return;
 
     setLoading(true);
     setErrors([]);
     setSuccess("");
-    setProgress("Reading Excel data...");
+    setProgress("Sending to server...");
 
     try {
-      const worksheet = workbook.Sheets[selectedSheet];
-      const allData = XLSX.utils.sheet_to_json<SheetRow>(worksheet);
-      const cols = Object.keys(allData[0] || {});
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sheet", selectedSheet);
+      formData.append("month", month);
+      formData.append("year", year);
 
-      const getField = (row: SheetRow, fieldName: string): string => {
-        const norm = normalizeCol(fieldName);
-        const key = cols.find((c) => normalizeCol(c) === norm);
-        return key && row[key] !== undefined && row[key] !== ""
-          ? String(row[key])
-          : "-";
-      };
+      const response = await fetch(
+        "http://localhost:5678/webhook/salary-slips",
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
 
-      const employees: EmployeeData[] = allData.map((row) => {
-        const totalDays = parseFloat(getField(row, "T.Days")) || 0;
-        const payableDays = parseFloat(getField(row, "Payable Days")) || 0;
-        const pt = parseFloat(getField(row, "PT")) || 0;
-        const tds = parseFloat(getField(row, "TDS")) || 0;
-        const pf = parseFloat(getField(row, "PF")) || 0;
-        const esic = parseFloat(getField(row, "ESIC")) || 0;
-        const bonus = parseFloat(getField(row, "Bonus/Security")) || 0;
-        const netPay = parseFloat(getField(row, "Total  Payble")) || 0;
-
-        return {
-          name: getField(row, "NAME"),
-          panNumber: getField(row, "PAN"),
-          designation: getField(row, "DESIGNATION"),
-          doj: getField(row, "D.O.J."),
-          employeeId: getField(row, "Sr. No."),
-          totalDays: String(totalDays),
-          payableDays: String(payableDays),
-          absentDays: String(totalDays - payableDays),
-          basicDA: getField(row, "Basic+DA(calc)"),
-          hra: getField(row, "HRA(calc)"),
-          lta: getField(row, "LTA(calc)"),
-          allowance: getField(row, "Allowance(calc)"),
-          grossSalary: getField(row, "GROSS TOTAL"),
-          other: getField(row, "Reb. (OT/ Pending/PL)"),
-          bonusSecurity: getField(row, "Bonus/Security"),
-          pt: getField(row, "PT"),
-          tds: getField(row, "TDS"),
-          pf: getField(row, "PF"),
-          esic: getField(row, "ESIC"),
-          earningTotal: getField(row, "Gross"),
-          deductionTotal: String(pt + tds + bonus + pf + esic),
-          netPay: getField(row, "Total  Payble"),
-          netPayInWords: numberToWords(netPay),
-          bankAc: getField(row, "Bank A/c No."),
-          ifsc: getField(row, "IFSC CODE"),
-          branch: getField(row, "Branch"),
-        };
-      });
-
-      const zip = new JSZip();
-
-      for (let i = 0; i < employees.length; i++) {
-        const emp = employees[i];
-        setProgress(
-          `Generating PDF ${i + 1} of ${employees.length} — ${emp.name}`,
-        );
-        // Yield to UI so progress renders
-        await new Promise((r) => setTimeout(r, 0));
-
-        const logoSrc = `${window.location.origin}/zerotime_logo_full.png`;
-        const blob = await pdf(
-          <SalarySlipDocument
-            data={emp}
-            month={month}
-            year={year}
-            logoSrc={logoSrc}
-          />,
-        ).toBlob();
-
-        const safeName =
-          emp.name
-            .replace(/[^a-zA-Z0-9 ]/g, "")
-            .trim()
-            .replace(/\s+/g, "_") || `employee_${i + 1}`;
-        zip.file(`${safeName}_salary_slip.pdf`, blob);
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
       }
 
-      setProgress("Creating ZIP file...");
-      await new Promise((r) => setTimeout(r, 0));
-
-      const zipBlob = await zip.generateAsync({ type: "blob" });
+      setProgress("Downloading ZIP...");
+      const zipBlob = await response.blob();
       saveAs(zipBlob, `salary-slips-${month}-${year}.zip`);
 
-      setSuccess(
-        `Generated ${employees.length} salary slips and downloaded as ZIP!`,
-      );
+      setSuccess("Salary slips generated and downloaded!");
 
       // Reset form after successful download
       setFile(null);
@@ -357,7 +287,7 @@ function App() {
       setLoading(false);
       setProgress("");
     }
-  }, [workbook, selectedSheet, month, year]);
+  }, [file, selectedSheet, month, year]);
 
   const canSubmit =
     file && selectedSheet && month && year && errors.length === 0 && !loading;
