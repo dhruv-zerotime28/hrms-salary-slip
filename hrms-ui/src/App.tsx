@@ -42,20 +42,6 @@ const REQUIRED_COLUMNS = [
 
 const SALARY_SHEET_KEYWORDS = ["salary", "sal", "payroll", "wages"];
 const MAX_FILE_SIZE_MB = 5;
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 type SheetRow = Record<string, string | number | undefined>;
 
@@ -71,9 +57,8 @@ function normalizeCol(s: string): string {
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
-  const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
+  const [, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
-  const [selectedSheet, setSelectedSheet] = useState("");
   const [sheetData, setSheetData] = useState<SheetRow[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -81,8 +66,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
   const [success, setSuccess] = useState("");
-  const [month, setMonth] = useState("");
-  const [year, setYear] = useState(new Date().getFullYear().toString());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateSheet = useCallback((wb: XLSX.WorkBook, sheetName: string) => {
@@ -138,20 +121,6 @@ function App() {
     setErrors(validationErrors);
   }, []);
 
-  const handleSheetChange = useCallback(
-    (sheetName: string) => {
-      setSelectedSheet(sheetName);
-      setErrors([]);
-      setSheetData([]);
-      setColumns([]);
-      setSuccess("");
-      if (workbook && sheetName) {
-        validateSheet(workbook, sheetName);
-      }
-    },
-    [workbook, validateSheet],
-  );
-
   const validateAndParseFile = useCallback(
     (selectedFile: File) => {
       setErrors([]);
@@ -160,7 +129,6 @@ function App() {
       setSuccess("");
       setWorkbook(null);
       setSheetNames([]);
-      setSelectedSheet("");
 
       const validationErrors: string[] = [];
 
@@ -195,7 +163,6 @@ function App() {
             SALARY_SHEET_KEYWORDS.some((kw) => name.toLowerCase().includes(kw)),
           );
           const autoSheet = salarySheet || wb.SheetNames[0];
-          setSelectedSheet(autoSheet);
           validateSheet(wb, autoSheet);
         } catch {
           setErrors([
@@ -232,7 +199,6 @@ function App() {
     setFile(null);
     setWorkbook(null);
     setSheetNames([]);
-    setSelectedSheet("");
     setSheetData([]);
     setColumns([]);
     setErrors([]);
@@ -241,7 +207,7 @@ function App() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!file || !selectedSheet || !month || !year) return;
+    if (!file) return;
 
     setLoading(true);
     setErrors([]);
@@ -251,17 +217,23 @@ function App() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("sheet", selectedSheet);
-      formData.append("month", month);
-      formData.append("year", year);
+      // formData.append("sheet", selectedSheet);
+      // formData.append("month", month);
+      // formData.append("year", year);
 
       const response = await fetch(
-        "http://localhost:5678/webhook/salary-slips",
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
+  "http://localhost:5678/webhook-test/generate-salary-slip",
+  {
+    method: "POST",
+    // Send the file object directly as the body
+    body: file, 
+    headers: {
+      "SalarySlipGenerate": "ztshrssg",
+      // Manually set the content type to match your Excel file
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    },
+  }
+);
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
@@ -269,15 +241,14 @@ function App() {
 
       setProgress("Downloading ZIP...");
       const zipBlob = await response.blob();
-      saveAs(zipBlob, `salary-slips-${month}-${year}.zip`);
+      saveAs(zipBlob, `salary-slips.zip`);
 
       setSuccess("Salary slips generated and downloaded!");
 
       // Reset form after successful download
       setFile(null);
       setWorkbook(null);
-      setSheetNames([]);
-      setSelectedSheet("");
+      setSheetNames([]);  
       setSheetData([]);
       setColumns([]);
     } catch (err) {
@@ -287,10 +258,9 @@ function App() {
       setLoading(false);
       setProgress("");
     }
-  }, [file, selectedSheet, month, year]);
+  }, [file]);
 
-  const canSubmit =
-    file && selectedSheet && month && year && errors.length === 0 && !loading;
+  const canSubmit = file && errors.length === 0 && !loading;
 
   return (
     <div className="app-container">
@@ -356,69 +326,6 @@ function App() {
           >
             ✕
           </button>
-        </div>
-      )}
-
-      {/* Sheet Selector */}
-      {sheetNames.length > 1 && (
-        <div className="sheet-selector">
-          <label htmlFor="sheet-select">Select Salary Sheet</label>
-          <select
-            id="sheet-select"
-            value={selectedSheet}
-            onChange={(e) => handleSheetChange(e.target.value)}
-          >
-            {sheetNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-          {selectedSheet && (
-            <span className="sheet-badge">
-              Selected: <strong>{selectedSheet}</strong>
-            </span>
-          )}
-        </div>
-      )}
-
-      {sheetNames.length === 1 && selectedSheet && (
-        <div className="sheet-selector">
-          <span className="sheet-badge">
-            Sheet: <strong>{selectedSheet}</strong>
-          </span>
-        </div>
-      )}
-
-      {/* Month & Year */}
-      {file && (
-        <div className="month-year-section">
-          <div className="month-year-field">
-            <label htmlFor="month-select">Month</label>
-            <select
-              id="month-select"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-            >
-              <option value="">Select month</option>
-              {MONTHS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="month-year-field">
-            <label htmlFor="year-input">Year</label>
-            <input
-              id="year-input"
-              type="number"
-              min="2020"
-              max="2030"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            />
-          </div>
         </div>
       )}
 
