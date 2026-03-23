@@ -22,7 +22,7 @@ export type EmployeeData = {
   allowance: string;
   grossSalary: string;
   other: string;
-  bonusSecurity: string;
+  RetentionBonus: string;
   pt: string;
   tds: string;
   pf: string;
@@ -38,9 +38,9 @@ export type EmployeeData = {
 
 const s = StyleSheet.create({
   page: {
-    padding: "14mm",
-    paddingBottom: "40mm",
-    fontSize: 10,
+    padding: "10mm",
+    paddingBottom: "38mm",
+    fontSize: 9,
     fontFamily: "Helvetica",
   },
   topLine: { borderTopWidth: 3, borderTopColor: "#000", marginBottom: 10 },
@@ -49,21 +49,21 @@ const s = StyleSheet.create({
     borderBottomColor: "#000",
     position: "absolute",
     bottom: "10mm",
-    left: "14mm",
-    right: "14mm",
+    left: "12mm",
+    right: "12mm",
   },
   // Header
-  logo: { width: 140, height: 60, objectFit: "contain" as const },
-  headerCenter: { textAlign: "center", marginTop: 10, marginBottom: 2 },
+  logo: { width: 120, height: 50, objectFit: "contain" as const },
+  headerCenter: { textAlign: "center", marginTop: 6, marginBottom: 2 },
   companyName: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#000",
-    marginBottom: 6,
+    marginBottom: 4,
     fontFamily: "Helvetica-Bold",
   },
   slipTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "bold",
     color: "#000",
     textDecoration: "underline",
@@ -71,7 +71,7 @@ const s = StyleSheet.create({
   },
   // Table shared
   table: {
-    marginTop: 14,
+    marginTop: 8,
     borderTopWidth: 1,
     borderTopColor: "#000",
     borderLeftWidth: 1,
@@ -151,13 +151,21 @@ const s = StyleSheet.create({
     padding: "6 8",
     fontFamily: "Helvetica-Bold",
   },
+  // Stamp
+  stamp: {
+    position: "absolute",
+    right: "14mm",
+    bottom: "60mm",
+    width: 100,
+    height: 85,
+  },
   // Footer
- footer: {
+  footer: {
     position: "absolute",
     bottom: "12mm",
-    left: "14mm",
-    right: "14mm",
-    fontSize: 9,
+    left: "10mm",
+    right: "10mm",
+    fontSize: 8,
     textAlign: "right",
   },
   footerLine: { marginBottom: 3 },
@@ -249,6 +257,8 @@ export function SalarySlipDocument({
   year: string;
   logoSrc: string;
 }) {
+  // Stamp image path
+  const stampSrc = `${window.location.origin}/stamp.png`;
   return (
     <Document>
       <Page size="A4" style={s.page}>
@@ -313,8 +323,8 @@ export function SalarySlipDocument({
           <SalaryRow
             earning="Basic + DA"
             eAmt={formatINR(data.basicDA)}
-            deduction="Bonus / Security"
-            dAmt={formatINR(data.bonusSecurity)}
+            deduction="Retention Bonus"
+            dAmt={formatINR(data.RetentionBonus)}
           />
           <SalaryRow
             earning="HRA"
@@ -374,6 +384,9 @@ export function SalarySlipDocument({
             </View>
           </View>
         </View>
+
+        {/* Stamp Image - absolutely positioned above footer */}
+        <Image src={stampSrc} style={s.stamp} />
 
         {/* Footer */}
         <View style={s.footer}>

@@ -35,7 +35,7 @@ const REQUIRED_COLUMNS = [
   "Allowance(calc)",
   "Reb. (OT/ Pending/PL)",
   "Gross",
-  "Bonus/Security",
+  "Retention Bonus",
   "PT",
   "TDS",
   "Total  Payble",
@@ -265,6 +265,65 @@ function App() {
           : "-";
       };
 
+      function formatExcelDate(value: string | number | undefined): string {
+        if (!value) return "-";
+        // If it's a number, treat as Excel serial date
+        if (typeof value === "number" && !isNaN(value)) {
+          let serial = value;
+          if (serial >= 60) serial -= 1;
+          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+          const d = new Date(excelEpoch.getTime() + serial * 86400000);
+          return (
+            d.getUTCDate().toString().padStart(2, "0") +
+            "-" +
+            d.toLocaleString("en-IN", { month: "short" }) +
+            "-" +
+            d.getUTCFullYear()
+          );
+        }
+        // If it's a string that is a number, treat as Excel serial date
+        if (typeof value === "string" && /^\d+$/.test(value)) {
+          let serial = parseInt(value, 10);
+          if (serial >= 60) serial -= 1;
+          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+          const d = new Date(excelEpoch.getTime() + serial * 86400000);
+          return (
+            d.getUTCDate().toString().padStart(2, "0") +
+            "-" +
+            d.toLocaleString("en-IN", { month: "short" }) +
+            "-" +
+            d.getUTCFullYear()
+          );
+        }
+        // If it's already a string date, try to parse and format
+        if (typeof value === "string") {
+          // Try parse as ISO or dd/mm/yyyy
+          let d = new Date(value);
+          if (
+            isNaN(d.getTime()) &&
+            /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/.test(value)
+          ) {
+            const [day, month, year] = value.split(/[\/\-]/);
+            d = new Date(
+              Number(year.length === 2 ? "20" + year : year),
+              Number(month) - 1,
+              Number(day),
+            );
+          }
+          if (!isNaN(d.getTime())) {
+            return (
+              d.getDate().toString().padStart(2, "0") +
+              "-" +
+              d.toLocaleString("en-IN", { month: "short" }) +
+              "-" +
+              d.getFullYear()
+            );
+          }
+          return value;
+        }
+        return String(value);
+      }
+
       const employees: EmployeeData[] = allData.map((row) => {
         const totalDays = parseFloat(getField(row, "T.Days")) || 0;
         const payableDays = parseFloat(getField(row, "Payable Days")) || 0;
@@ -272,14 +331,14 @@ function App() {
         const tds = parseFloat(getField(row, "TDS")) || 0;
         const pf = parseFloat(getField(row, "PF")) || 0;
         const esic = parseFloat(getField(row, "ESIC")) || 0;
-        const bonus = parseFloat(getField(row, "Bonus/Security")) || 0;
+        const bonus = parseFloat(getField(row, "Retention Bonus")) || 0;
         const netPay = parseFloat(getField(row, "Total  Payble")) || 0;
 
         return {
           name: getField(row, "NAME"),
           panNumber: getField(row, "PAN"),
           designation: getField(row, "DESIGNATION"),
-          doj: getField(row, "D.O.J."),
+          doj: formatExcelDate(getField(row, "D.O.J.")),
           employeeId: getField(row, "Sr. No."),
           totalDays: String(totalDays),
           payableDays: String(payableDays),
@@ -290,7 +349,7 @@ function App() {
           allowance: getField(row, "Allowance(calc)"),
           grossSalary: getField(row, "GROSS TOTAL"),
           other: getField(row, "Reb. (OT/ Pending/PL)"),
-          bonusSecurity: getField(row, "Bonus/Security"),
+          RetentionBonus: getField(row, "Retention Bonus"),
           pt: getField(row, "PT"),
           tds: getField(row, "TDS"),
           pf: getField(row, "PF"),
