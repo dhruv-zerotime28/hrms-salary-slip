@@ -22,7 +22,7 @@ export type EmployeeData = {
   allowance: string;
   grossSalary: string;
   other: string;
-  bonusSecurity: string;
+  retentionBonus: string;
   pt: string;
   tds: string;
   pf: string;
@@ -313,8 +313,8 @@ export function SalarySlipDocument({
           <SalaryRow
             earning="Basic + DA"
             eAmt={formatINR(data.basicDA)}
-            deduction="Bonus / Security"
-            dAmt={formatINR(data.bonusSecurity)}
+            deduction="Retention Bonus"
+            dAmt={formatINR(data.retentionBonus)}
           />
           <SalaryRow
             earning="HRA"

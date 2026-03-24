@@ -31,7 +31,7 @@ const REQUIRED_COLUMNS = [
   "Allowance(calc)",
   "Reb. (OT/ Pending/PL)",
   "Gross",
-  "Bonus/Security",
+  "Retention Bonus",
   "PT",
   "TDS",
   "Total  Payble",
@@ -222,7 +222,7 @@ function App() {
       // formData.append("year", year);
 
       const response = await fetch(
-  "http://localhost:5678/webhook-test/generate-salary-slip",
+  "https://payslip.zerotimesolutions.com/webhook-test/generate-salary-slip",
   {
     method: "POST",
     // Send the file object directly as the body
